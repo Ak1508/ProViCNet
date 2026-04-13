@@ -1,0 +1,8 @@
+__pycache__/
+*.pyc
+visualization_ProViCNet
+result_ProViCNet
+*.png
+*.pth
+.env
+*.txt~
