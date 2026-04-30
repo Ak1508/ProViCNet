@@ -51,6 +51,16 @@ python inference_mpMRI.py \
     --config_file config_MRI.yaml
 ```
 
+### T2-only MRI Analysis
+
+```bash
+python inference_T2.py \
+    --ModelName ProViCNet \
+    --vit_backbone dinov2_s_reg \
+    --img_size 448 \
+    --config_file configs/config_infer_MRI.yaml
+```
+
 ### Transrectal Ultrasound (TRUS) Analysis
 
 ```bash
