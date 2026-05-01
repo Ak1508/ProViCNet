@@ -39,6 +39,17 @@ ProViCNet consists of two main components:
 1. **Feature Extractor**: Based on DINOv2 vision transformer architecture + Patch-level contrastive learning
 2. **Segmentation Head**: Specialized decoder for precise cancer region delineation
 
+## DICOM to NIfTI Conversion
+If your MRI/TRUS inputs are in DICOM series format, convert each series first:
+
+```bash
+python tools/convert_dicom_to_nifti.py \
+    --dicom_dir /path/to/dicom_series_folder \
+    --output /path/to/output_image.nii.gz
+```
+
+Then use the generated `.nii.gz` files in `configs/config_infer_MRI.yaml` or `configs/config_infer_TRUS.yaml`.
+
 ## Usage
 
 ### Multi-parametric MRI (mpMRI) Analysis
