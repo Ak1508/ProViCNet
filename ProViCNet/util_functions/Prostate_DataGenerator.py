@@ -53,18 +53,34 @@ class US_MRI_Generator(Dataset):
     #     cancer = sitk.GetArrayFromImage(sitk.ReadImage(self.cancerFileName[idx]))
     #     return image.astype(np.float32), gland.astype(np.float32), cancer.astype(np.float32)
 
+
+    def _align_label_to_image(self, label_image, ref_image):
+        same_space = (
+            label_image.GetSize() == ref_image.GetSize() and
+            label_image.GetSpacing() == ref_image.GetSpacing() and
+            label_image.GetOrigin() == ref_image.GetOrigin() and
+            label_image.GetDirection() == ref_image.GetDirection()
+        )
+        if same_space:
+            return label_image
+        return sitk.Resample(
+            label_image,
+            ref_image,
+            sitk.Transform(),
+            sitk.sitkNearestNeighbor,
+            0,
+            label_image.GetPixelID(),
+        )
+
     def _loadImage(self, idx):
         # Read the image files
         image = sitk.ReadImage(self.imageFileName[idx])
         gland = sitk.ReadImage(self.glandFileName[idx])
         cancer = sitk.ReadImage(self.cancerFileName[idx])
         
-        # Ensure the origin and direction match
-        gland.SetOrigin(image.GetOrigin())
-        gland.SetDirection(image.GetDirection())
-        
-        cancer.SetOrigin(image.GetOrigin())
-        cancer.SetDirection(image.GetDirection())
+        # Align label maps to image grid if needed.
+        gland = self._align_label_to_image(gland, image)
+        cancer = self._align_label_to_image(cancer, image)
         
         # Convert images to numpy arrays and normalize image
         image_array = sitk.GetArrayFromImage(image) / 255.0
