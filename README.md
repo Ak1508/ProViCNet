@@ -50,7 +50,30 @@ python tools/convert_dicom_to_nifti.py \
 
 Then use the generated `.nii.gz` files in `configs/config_infer_MRI.yaml` or `configs/config_infer_TRUS.yaml`.
 
+To convert RT Structure Set (`RS*.dcm`) to a NIfTI mask aligned to the same DICOM series:
+
+```bash
+python tools/convert_dicom_to_nifti.py     --dicom_dir /path/to/dicom_series_folder     --rtstruct /path/to/RS.dcm     --roi_name Prostate     --output /path/to/output_mask.nii.gz
+```
+
+> Note: RTSTRUCT conversion requires `rt-utils` (`pip install rt-utils`).
+
 ## Usage
+
+### Align mpMRI modalities to T2 (recommended before inference)
+
+```bash
+python tools/align_mri_modalities_to_t2.py \
+    --t2 /path/to/case_t2.nii.gz \
+    --adc /path/to/case_adc.nii.gz \
+    --dwi /path/to/case_dwi.nii.gz \
+    --gland /path/to/case_gland.nii.gz \
+    --cancer /path/to/case_cancer.nii.gz \
+    --output_dir /path/to/aligned_case \
+    --prefix case001
+```
+
+Use the generated `*_to_t2.nii.gz` paths in `configs/config_infer_MRI.yaml`.
 
 ### Multi-parametric MRI (mpMRI) Analysis
 
