@@ -88,7 +88,7 @@ def main(args):
         
         # Visualize the extracted feature map using UMAP.
         featuremap_filename = os.path.join(args.visualization_folder, f'{patient_ID}_featuremap_TRUS.png')
-        visualize_featuremap(Tokens_TRUS, Image_TRUS, Label, featuremap_filename)
+        # visualize_featuremap(Tokens_TRUS, Image_TRUS, Label, featuremap_filename)
     
     # 3.2. Full Inference, Prediction, and Visualization
     os.makedirs(args.save_folder, exist_ok=True)

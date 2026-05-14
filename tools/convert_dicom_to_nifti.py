@@ -1,8 +1,65 @@
 import argparse
 from pathlib import Path
 from typing import Optional
+import numpy as np
 
 import SimpleITK as sitk
+
+
+
+
+def _get_slice_direction(series_slice):
+    orientation = [float(value) for value in series_slice.ImageOrientationPatient]
+    row_direction = orientation[:3]
+    column_direction = orientation[3:]
+    return [
+        row_direction[1] * column_direction[2]
+        - row_direction[2] * column_direction[1],
+        row_direction[2] * column_direction[0]
+        - row_direction[0] * column_direction[2],
+        row_direction[0] * column_direction[1]
+        - row_direction[1] * column_direction[0],
+    ]
+
+
+def _get_slice_position(series_slice) -> float:
+    slice_direction = _get_slice_direction(series_slice)
+    origin = [float(value) for value in series_slice.ImagePositionPatient]
+    return sum(direction * position for direction, position in zip(slice_direction, origin))
+
+
+def _get_rtstruct_mask_geometry(series_data):
+    first_slice = series_data[0]
+    orientation = [float(value) for value in first_slice.ImageOrientationPatient]
+    row_direction = orientation[:3]
+    column_direction = orientation[3:]
+    slice_direction = _get_slice_direction(first_slice)
+    row_spacing, column_spacing = [float(value) for value in first_slice.PixelSpacing]
+    slice_spacing = 1.0
+    if len(series_data) > 1:
+        first_position = _get_slice_position(series_data[0])
+        last_position = _get_slice_position(series_data[-1])
+        slice_spacing = abs((last_position - first_position) / (len(series_data) - 1))
+
+    origin = tuple(float(value) for value in first_slice.ImagePositionPatient)
+    spacing = (column_spacing, row_spacing, slice_spacing)
+    direction = tuple(
+        axis_direction[component]
+        for component in range(3)
+        for axis_direction in (row_direction, column_direction, slice_direction)
+    )
+    return origin, spacing, direction
+
+
+def _resample_mask_to_reference(mask_image: sitk.Image, ref_image: sitk.Image) -> sitk.Image:
+    return sitk.Resample(
+        mask_image,
+        ref_image,
+        sitk.Transform(),
+        sitk.sitkNearestNeighbor,
+        0,
+        sitk.sitkUInt8,
+    )
 
 
 def convert_series(dicom_dir: Path, output_path: Path) -> None:
@@ -60,21 +117,36 @@ def convert_rtstruct_to_nifti_mask(
     if selected_roi not in roi_names:
         raise ValueError(f"ROI '{selected_roi}' not found. Available ROIs: {roi_names}")
 
-    print(f"[INFO] Using ROI: {selected_roi}")
-    mask = rtstruct.get_roi_mask_by_name(selected_roi).astype('uint8')
-
-    # rt-utils returns mask as (x, y, z); SimpleITK expects (z, y, x)
-    mask_zyx = mask.transpose(2, 1, 0)
-
     ref_reader = sitk.ImageSeriesReader()
     series_ids = ref_reader.GetGDCMSeriesIDs(str(dicom_dir))
     if not series_ids:
         raise ValueError(f"No DICOM series found in: {dicom_dir}")
+
     ref_reader.SetFileNames(ref_reader.GetGDCMSeriesFileNames(str(dicom_dir), series_ids[0]))
     ref_image = ref_reader.Execute()
 
-    mask_image = sitk.GetImageFromArray(mask_zyx)
-    mask_image.CopyInformation(ref_image)
+    print(f"[INFO] Using ROI: {selected_roi}")
+    mask = rtstruct.get_roi_mask_by_name(selected_roi).astype("uint8")
+
+    # rt-utils returns mask as (x, y, z); SimpleITK expects arrays as (z, y, x).
+    mask_zyx = mask.transpose(2, 1, 0)
+
+    mask_image = sitk.GetImageFromArray(mask_zyx.astype("uint8", copy=False))
+    origin, spacing, direction = _get_rtstruct_mask_geometry(rtstruct.series_data)
+    mask_image.SetOrigin(origin)
+    mask_image.SetSpacing(spacing)
+    mask_image.SetDirection(direction)
+
+    # Resample in physical space instead of padding/cropping array indices. This
+    # preserves contour locations and still makes the output mask grid exactly
+    # match the referenced DICOM image, adding empty slices or removing slices
+    # only outside the reference image extent.
+    if mask_image.GetSize() != ref_image.GetSize():
+        print(
+            "[INFO] Resampling mask to match DICOM image size: "
+            f"mask {mask_image.GetSize()} -> target {ref_image.GetSize()}"
+        )
+    mask_image = _resample_mask_to_reference(mask_image, ref_image)
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
     sitk.WriteImage(mask_image, str(output_path), useCompression=True)
