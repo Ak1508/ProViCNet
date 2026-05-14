@@ -1,0 +1,13 @@
+# config_MRI.yaml
+sample_dataset:
+  T2: ["vcu_MRI/vcu_t2.nii.gz",]
+  ADC: ["vcu_MRI/vcu_adc.nii.gz",]
+  DWI: ["vcu_MRI/vcu_dwi.nii.gz",]
+  Gland: ["vcu_MRI/vcu_prostate.nii.gz",]
+  Cancer: ["vcu_MRI/vcu_prostate.nii.gz",]
+
+model_weights:
+  T2: "https://huggingface.co/pimed/ProViCNet/resolve/main/T2_best.pth"
+  ADC: "https://huggingface.co/pimed/ProViCNet/resolve/main/ADC_best.pth"
+  DWI: "https://huggingface.co/pimed/ProViCNet/resolve/main/DWI_best.pth"
+  mpMRI: "https://huggingface.co/pimed/ProViCNet/resolve/main/mpMRI_Fusion_best.pth"

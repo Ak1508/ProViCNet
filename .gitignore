@@ -6,3 +6,5 @@ result_ProViCNet
 *.pth
 .env
 *.txt~
+vcu_MRI
+vcu_TRUS
